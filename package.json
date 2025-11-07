@@ -1,7 +1,26 @@
 {
   "name": "queuectl",
+  "version": "1.0.0",
   "module": "src/index.ts",
   "type": "module",
+  "author": "Nikhil Pulluri",
+  "license": "UNLICENSED",
+  "main": "src/index.ts",
+  "bin": {
+    "queuectl": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "dev:no-watch": "bun run src/index.ts"
+  },
+  "keywords": [
+    "queue",
+    "jobs",
+    "cli",
+    "background-jobs",
+    "typescript",
+    "bun"
+  ],
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^24.10.0"
