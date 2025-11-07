@@ -185,3 +185,23 @@ export const getNextPendingJob = (db: Database): Job | null => {
   }
 };
 
+export const getActiveWorkerCount = (db: Database): number => {
+  try {
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM workers');
+    const result = stmt.get() as { count: number } | null;
+    return result?.count || 0;
+  } catch (error) {
+    return 0;
+  }
+};
+
+export const getActiveWorkers = (db: Database) => {
+  try {
+    const stmt = db.prepare('SELECT pid, started_at, last_heartbeat FROM workers ORDER BY started_at DESC');
+    const workers = stmt.all() as Array<{ pid: number; started_at: string; last_heartbeat: string }>;
+    return workers;
+  } catch (error) {
+    return [];
+  }
+};
+
