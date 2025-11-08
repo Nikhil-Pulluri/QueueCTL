@@ -205,3 +205,78 @@ export const getActiveWorkers = (db: Database) => {
   }
 };
 
+export const setConfigValue = (db: Database, key: string, value: string): void => {
+  try {
+    const now = getCurrentTimestamp();
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO config (key, value, updated_at)
+      VALUES (?, ?, ?)
+    `);
+    stmt.run(key, value, now);
+  } catch (error) {
+    throw new Error(`Failed to set config: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+export const getDLQJobs = (db: Database, limit: number = 10, offset: number = 0) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT id, command, attempts, created_at, failed_at, error 
+      FROM dead_letter_queue 
+      ORDER BY failed_at DESC 
+      LIMIT ? OFFSET ?
+    `);
+    const jobs = stmt.all(limit, offset) as any[];
+    return jobs;
+  } catch (error) {
+    throw new Error(`Failed to get DLQ jobs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+
+export const getDLQCount = (db: Database): number => {
+  try {
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM dead_letter_queue');
+    const result = stmt.get() as { count: number } | null;
+    return result?.count || 0;
+  } catch (error) {
+    return 0;
+  }
+};
+
+export const retryDLQJob = (db: Database, jobId: string): boolean => {
+  try {
+    const getDLQStmt = db.prepare('SELECT * FROM dead_letter_queue WHERE id = ?');
+    const dlqJob = getDLQStmt.get(jobId) as any;
+
+    if (!dlqJob) {
+      throw new Error('Job not found in DLQ');
+    }
+
+    const now = getCurrentTimestamp();
+
+    const insertStmt = db.prepare(`
+      INSERT OR REPLACE INTO jobs (id, command, state, attempts, max_retries, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertStmt.run(
+      jobId,
+      dlqJob.command,
+      'pending',
+      0,
+      3,
+      dlqJob.created_at,
+      now
+    );
+
+    const deleteStmt = db.prepare('DELETE FROM dead_letter_queue WHERE id = ?');
+    deleteStmt.run(jobId);
+
+    return true;
+  } catch (error) {
+    throw new Error(`Failed to retry job: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+
