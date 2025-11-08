@@ -12,7 +12,9 @@ export interface Job {
   updated_at: ISODateString;
   retry_at?: ISODateString | null;      
   completed_at?: ISODateString | null;  
-  error?: string | null;                 
+  error?: string | null;   
+  output?: string | null;
+  duration?: number | null;              
 }
 
 export interface JobInput {

@@ -311,15 +311,20 @@ export const updateWorkerHeartbeat = (db: Database, pid: number): void => {
   }
 };
 
-export const markJobCompleted = (db: Database, jobId: string): void => {
+export const markJobCompleted = (
+  db: Database,
+  jobId: string,
+  output?: string,
+  duration?: number
+): void => {
   try {
     const now = getCurrentTimestamp();
     const stmt = db.prepare(`
       UPDATE jobs 
-      SET state = 'completed', completed_at = ?, updated_at = ?
+      SET state = 'completed', completed_at = ?, updated_at = ?, output = ?, duration = ?
       WHERE id = ?
     `);
-    stmt.run(now, now, jobId);
+    stmt.run(now, now, output || null, duration || null, jobId);
   } catch (error) {
     throw new Error(`Failed to mark job completed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }

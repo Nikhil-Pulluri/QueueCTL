@@ -15,7 +15,9 @@ export const createTables = (db: Database): void => {
       updated_at TEXT NOT NULL,
       retry_at TEXT,
       completed_at TEXT,
-      error TEXT
+      error TEXT,
+      output TEXT,
+      duration INTEGER
     );
   `);
 

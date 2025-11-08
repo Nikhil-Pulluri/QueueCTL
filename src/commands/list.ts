@@ -61,7 +61,9 @@ export const listCommand = (program: Command): void => {
           chalk.bold('Command').padEnd(40) +
           chalk.bold('State').padEnd(12) +
           chalk.bold('Attempts') +
-          chalk.bold('  Created At')
+          chalk.bold('Created At') +
+          chalk.bold('Duration').padEnd(10) +
+          chalk.bold('Output/Error')
         );
         console.log(chalk.gray('─'.repeat(120)));
 
@@ -69,12 +71,14 @@ export const listCommand = (program: Command): void => {
           const id = (job.id as string).substring(0, 36);
           const command = (job.command as string).substring(0, 39);
           const attempts = `${job.attempts}/${job.max_retries}`;
+          const outputOrError = (job.output || job.error || '-').substring(0, 40);
 
           console.log(
             chalk.cyan(id).padEnd(37) +
             command.padEnd(40) +
             getStateColor(job.state as string).padEnd(12) +
             attempts.padEnd(10) +
+            chalk.gray(outputOrError) +
             chalk.gray(new Date(job.created_at as string).toLocaleString())
           );
         });

@@ -55,18 +55,35 @@ async function pollAndProcessJobs() {
         const result = await executeCommand(job.command);
         
         if (result.success) {
-          markJobCompleted(db, job.id);
+          const output = [result.stdout, result.stderr]
+            .filter(Boolean)
+            .map(s => s?.trim())
+            .filter(s => s)
+            .join('\n');
+
+          
+          markJobCompleted(db, job.id, output, result.duration);
           console.log(`Worker ${workerPid}: Job ${job.id} completed successfully (${result.duration}ms)`);
-        } else {
+
+          if (output) {
+            console.log(`  Output: ${output.substring(0, 100)}${output.length > 100 ? '...' : ''}`);
+          }
+       } else {
           const newAttempts = job.attempts + 1;
-          const errorMsg = result.error || `Command failed with exit code ${result.exitCode}`;
+          const errorMsg = result.error || result.stderr || `Command failed with exit code ${result.exitCode}`;
+          
+          console.log(`Worker ${workerPid}: Job ${job.id} FAILED!`);
+          console.log(`  Exit Code: ${result.exitCode}`);
+          console.log(`  Error: ${errorMsg}`);
+          console.log(`  Stdout: ${result.stdout || '(empty)'}`);
+          console.log(`  Stderr: ${result.stderr || '(empty)'}`);
           
           markJobFailed(db, job.id, errorMsg, newAttempts, job.max_retries);
           
           if (newAttempts >= job.max_retries) {
             console.log(`Worker ${workerPid}: Job ${job.id} moved to DLQ after ${newAttempts} attempts`);
           } else {
-            console.log(`Worker ${workerPid}: Job ${job.id} failed (attempt ${newAttempts}/${job.max_retries})`);
+            console.log(`Worker ${workerPid}: Job ${job.id} will retry (attempt ${newAttempts}/${job.max_retries})`);
           }
         }
       } else {
