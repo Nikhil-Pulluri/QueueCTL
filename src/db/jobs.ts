@@ -279,4 +279,106 @@ export const retryDLQJob = (db: Database, jobId: string): boolean => {
   }
 };
 
+export const registerWorker = (db: Database, pid: number): void => {
+  try {
+    const now = getCurrentTimestamp();
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO workers (pid, started_at, last_heartbeat)
+      VALUES (?, ?, ?)
+    `);
+    stmt.run(pid, now, now);
+  } catch (error) {
+    console.error('Failed to register worker:', error);
+  }
+};
+
+export const unregisterWorker = (db: Database, pid: number): void => {
+  try {
+    const stmt = db.prepare('DELETE FROM workers WHERE pid = ?');
+    stmt.run(pid);
+  } catch (error) {
+    console.error('Failed to unregister worker:', error);
+  }
+};
+
+export const updateWorkerHeartbeat = (db: Database, pid: number): void => {
+  try {
+    const now = getCurrentTimestamp();
+    const stmt = db.prepare('UPDATE workers SET last_heartbeat = ? WHERE pid = ?');
+    stmt.run(now, pid);
+  } catch (error) {
+    console.error('Failed to update heartbeat:', error);
+  }
+};
+
+export const markJobCompleted = (db: Database, jobId: string): void => {
+  try {
+    const now = getCurrentTimestamp();
+    const stmt = db.prepare(`
+      UPDATE jobs 
+      SET state = 'completed', completed_at = ?, updated_at = ?
+      WHERE id = ?
+    `);
+    stmt.run(now, now, jobId);
+  } catch (error) {
+    throw new Error(`Failed to mark job completed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+export const markJobFailed = (
+  db: Database,
+  jobId: string,
+  errorMessage: string,
+  attempts: number,
+  maxRetries: number
+): void => {
+  try {
+    const now = getCurrentTimestamp();
+    
+    if (attempts >= maxRetries) {
+      moveJobToDLQ(db, jobId, errorMessage);
+    } else {
+      const backoffBase = parseInt(getConfigValue(db, 'backoff-base', '2'));
+      const delaySeconds = Math.pow(backoffBase, attempts);
+      const retryAt = new Date(Date.now() + delaySeconds * 1000).toISOString();
+      
+      const stmt = db.prepare(`
+        UPDATE jobs 
+        SET state = 'failed', attempts = ?, retry_at = ?, error = ?, updated_at = ?
+        WHERE id = ?
+      `);
+      stmt.run(attempts, retryAt, errorMessage, now, jobId);
+    }
+  } catch (error) {
+    throw new Error(`Failed to mark job failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+export const moveJobToDLQ = (db: Database, jobId: string, errorMessage: string): void => {
+  try {
+    const getJobStmt = db.prepare('SELECT * FROM jobs WHERE id = ?');
+    const job = getJobStmt.get(jobId) as any;
+    
+    if (!job) {
+      throw new Error('Job not found');
+    }
+    
+    const now = getCurrentTimestamp();
+    
+    const insertDLQStmt = db.prepare(`
+      INSERT INTO dead_letter_queue (id, command, attempts, created_at, failed_at, error)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    insertDLQStmt.run(jobId, job.command, job.attempts, job.created_at, now, errorMessage);
+    
+    const updateJobStmt = db.prepare(`
+      UPDATE jobs SET state = 'dead', updated_at = ? WHERE id = ?
+    `);
+    updateJobStmt.run(now, jobId);
+  } catch (error) {
+    throw new Error(`Failed to move job to DLQ: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+
 
