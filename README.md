@@ -1,6 +1,6 @@
 # QueueCTL
 
-A production-grade CLI-based background job queue system built with Bun and TypeScript. QueueCTL manages background jobs with multiple worker processes, automatic retry logic using exponential backoff, and a Dead Letter Queue for permanently failed jobs.
+A CLI-based background job queue system built with Bun and TypeScript. QueueCTL manages background jobs with multiple worker processes, automatic retry logic using exponential backoff, and a Dead Letter Queue for permanently failed jobs.
 
 ## Features
 
@@ -11,7 +11,6 @@ A production-grade CLI-based background job queue system built with Bun and Type
 - **Persistent Storage** - SQLite database ensures jobs survive restarts
 - **Job State Tracking** - Monitor jobs through their complete lifecycle
 - **Configuration Management** - Customize retry behavior and backoff timing
-- **Clean CLI Interface** - Intuitive commands with helpful output
 
 ## Prerequisites
 
