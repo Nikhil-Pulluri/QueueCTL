@@ -1,5 +1,5 @@
 import type { Database } from 'bun:sqlite';
-import { createLogger } from '../../logger';
+import { createLogger } from '../logger';
 
 const c = createLogger("Database");
 

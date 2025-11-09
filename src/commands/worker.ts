@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
-import { fork } from 'child_process';
+import { exec, execSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -10,7 +10,14 @@ import { getActiveWorkers, unregisterWorker } from '../db/jobs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const workers: any[] = [];
+function getBunPath(): string {
+  try {
+    const result = execSync('where bun', { encoding: 'utf8' });
+    return result.trim().split('\n')[0];
+  } catch {
+    return 'bun';
+  }
+}
 
 export const workerCommand = (program: Command): void => {
   const workerCmd = program
@@ -33,30 +40,23 @@ export const workerCommand = (program: Command): void => {
       console.log(chalk.gray('─'.repeat(50)));
 
       const workerPath = path.join(__dirname, '../queue/worker-process.ts');
+      const bunPath = getBunPath();
 
       for (let i = 0; i < count; i++) {
-        const worker = fork(workerPath, [], {
-          execPath: 'bun',
-          stdio: 'inherit'
+        const psCommand = `Start-Process -FilePath "${bunPath}" -ArgumentList "${workerPath}" -WindowStyle Hidden`;
+        
+        exec(`powershell -Command "${psCommand}"`, (error) => {
+          if (error) {
+            console.error(`Failed to start worker: ${error.message}`);
+          }
         });
 
-        workers.push(worker);
-        console.log(`Worker ${worker.pid} started`);
-
-        worker.on('exit', (code) => {
-          console.log(`Worker ${worker.pid} exited with code ${code}`);
-        });
+        console.log(`Worker ${i + 1} started (background)`);
       }
 
       console.log(chalk.gray('─'.repeat(50)));
-      console.log(chalk.green(`${count} worker(s) started successfully`));
-      console.log('Press Ctrl+C to stop all workers\n');
-
-      process.on('SIGINT', () => {
-        console.log('\nStopping all workers...');
-        workers.forEach(w => w.kill('SIGTERM'));
-        setTimeout(() => process.exit(0), 1000);
-      });
+      console.log(chalk.green(`${count} worker(s) started in background`));
+      console.log('Use "queuectl worker stop" to stop all workers\n');
     });
 
   workerCmd

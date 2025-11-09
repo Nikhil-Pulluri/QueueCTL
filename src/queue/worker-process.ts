@@ -11,6 +11,7 @@ import {
   markJobFailed
 } from '../db/jobs';
 import { executeCommand } from './job-executor';
+import { createLogger } from '../logger';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,15 +25,18 @@ db.exec('PRAGMA busy_timeout = 5000;');
 let isRunning = true;
 const workerPid = process.pid;
 
+const logger = createLogger(`Worker-${workerPid}`);
+
 registerWorker(db, workerPid);
+logger.info(`Worker ${workerPid} started`);
 
 process.on('SIGTERM', () => {
-  console.log(`Worker ${workerPid}: Received SIGTERM, shutting down gracefully...`);
+  logger.info(`Received SIGTERM, shutting down gracefully`);
   isRunning = false;
 });
 
 process.on('SIGINT', () => {
-  console.log(`Worker ${workerPid}: Received SIGINT, shutting down gracefully...`);
+  logger.info(`Received SIGINT, shutting down gracefully`);
   isRunning = false;
 });
 
@@ -43,14 +47,12 @@ const heartbeatInterval = setInterval(() => {
 }, 5000);
 
 async function pollAndProcessJobs() {
-  console.log(`Worker ${workerPid}: Started`);
-
   while (isRunning) {
     try {
       const job = getNextPendingJob(db);
 
       if (job) {
-        console.log(`Worker ${workerPid}: Processing job ${job.id} - Command: ${job.command}`);
+        logger.info(`Processing job ${job.id} - Command: ${job.command}`);
         
         const result = await executeCommand(job.command);
         
@@ -60,37 +62,30 @@ async function pollAndProcessJobs() {
             .map(s => s?.trim())
             .filter(s => s)
             .join('\n');
-
           
           markJobCompleted(db, job.id, output, result.duration);
-          console.log(`Worker ${workerPid}: Job ${job.id} completed successfully (${result.duration}ms)`);
-
+          logger.info(`Job ${job.id} completed successfully (${result.duration}ms)`);
+          
           if (output) {
-            console.log(`  Output: ${output.substring(0, 100)}${output.length > 100 ? '...' : ''}`);
+            logger.info(`Job ${job.id} output: ${output.substring(0, 200)}${output.length > 200 ? '...' : ''}`);
           }
-       } else {
+        } else {
           const newAttempts = job.attempts + 1;
           const errorMsg = result.error || result.stderr || `Command failed with exit code ${result.exitCode}`;
-          
-          console.log(`Worker ${workerPid}: Job ${job.id} FAILED!`);
-          console.log(`  Exit Code: ${result.exitCode}`);
-          console.log(`  Error: ${errorMsg}`);
-          console.log(`  Stdout: ${result.stdout || '(empty)'}`);
-          console.log(`  Stderr: ${result.stderr || '(empty)'}`);
           
           markJobFailed(db, job.id, errorMsg, newAttempts, job.max_retries);
           
           if (newAttempts >= job.max_retries) {
-            console.log(`Worker ${workerPid}: Job ${job.id} moved to DLQ after ${newAttempts} attempts`);
+            logger.error(`Job ${job.id} moved to DLQ after ${newAttempts} attempts - Error: ${errorMsg}`);
           } else {
-            console.log(`Worker ${workerPid}: Job ${job.id} will retry (attempt ${newAttempts}/${job.max_retries})`);
+            logger.warn(`Job ${job.id} failed (attempt ${newAttempts}/${job.max_retries}) - Error: ${errorMsg}`);
           }
         }
       } else {
         await Bun.sleep(1000);
       }
     } catch (error) {
-      console.error(`Worker ${workerPid}: Error:`, error);
+      logger.error(`Error processing job: ${error instanceof Error ? error.message : 'Unknown error'}`);
       await Bun.sleep(2000);
     }
   }
@@ -98,7 +93,7 @@ async function pollAndProcessJobs() {
   clearInterval(heartbeatInterval);
   unregisterWorker(db, workerPid);
   db.close();
-  console.log(`Worker ${workerPid}: Stopped`);
+  logger.info(`Worker ${workerPid} stopped`);
   process.exit(0);
 }
 
