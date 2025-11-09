@@ -95,3 +95,20 @@ queuectl --help
 Please find the attached link for the video reference.
 
 [Demo Video Link](https://www.loom.com/share/d58ce9d22e66483eb494704f42285aae)
+
+## Architecture Overview
+
+### System Components
+
+QueueCTL consists of four main components:
+
+1. **CLI Interface** - Command-line tool for managing jobs and workers
+2. **SQLite Database** - Persistent storage for jobs, configuration, and worker state
+3. **Worker Processes** - Background processes that execute queued jobs
+4. **Job Executor** - Handles shell command execution with result capture
+
+### Job Lifecycle
+
+Jobs progress through the following states:
+
+![alt text](readme_assets/archdiagram.png)
