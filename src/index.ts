@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { enqueueCommand } from './commands/enqueue';

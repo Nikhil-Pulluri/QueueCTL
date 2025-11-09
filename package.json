@@ -11,7 +11,10 @@
   },
   "scripts": {
     "dev": "bun --watch src/index.ts",
-    "dev:no-watch": "bun run src/index.ts"
+    "dev:no-watch": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outfile dist/queuectl --target bun --minify",
+    "install:local": "bun link",
+    "postinstall": "echo 'Run: bun link' to install globally"
   },
   "keywords": [
     "queue",
