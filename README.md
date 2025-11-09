@@ -51,3 +51,47 @@ chmod +x src/index.ts
 bun link
 queuectl --help
 ```
+
+## Example Usage
+
+### Enqueue a Job
+
+![alt text](readme_assets/image.png)
+
+### Start Worker(s)
+
+![alt text](readme_assets/image-1.png)
+
+### Check Status
+
+![alt text](readme_assets/image-2.png)
+
+### List Jobs
+
+![alt text](readme_assets/image-3.png)
+
+![alt text](readme_assets/image-4.png)
+
+![alt text](readme_assets/image-5.png)
+
+### Configuration Management
+
+![alt text](readme_assets/image-6.png)
+
+![alt text](readme_assets/image-7.png)
+
+### Dead Letter Queue (DLQ)
+
+![alt text](readme_assets/image-8.png)
+
+![alt text](readme_assets/image-9.png)
+
+### Stop Workers
+
+![alt text](readme_assets/image.png)
+
+## Demonstration Video
+
+Please find the attached link for the video reference.
+
+[Demo Video Link](https://www.loom.com/share/d58ce9d22e66483eb494704f42285aae)
